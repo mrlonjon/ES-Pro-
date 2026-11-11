@@ -1,0 +1,1315 @@
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<meta name="theme-color" content="#1B222C">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Exam Scanner">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Exam Scanner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bai+Jamjuree:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&display=swap">
+<style>
+/* Concept: a form on a desk. Cool paper ground, graphite ink, one blue dropout accent.
+   Answer chips are drawn as real OMR bubbles, so the key editor looks like the sheet itself. */
+:root{
+  --paper:#EEF2F5; --card:#FFFFFF; --ink:#1B222C; --ink2:#586474; --rule:#D5DCE4; --bub:#8F9BAA;
+  --accent:#1F5FD1; --accent-ink:#FFFFFF; --accent-bg:#E3ECFB;
+  --fill:#2A2F37; --fill-ink:#FFFFFF;
+  --good:#17875A; --good-bg:#DDF1E7; --bad:#C23A2E; --bad-bg:#F8E1DE; --warn:#A86A0A; --warn-bg:#FBF0D9;
+  --f-display:"Bai Jamjuree","IBM Plex Sans Thai",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans Thai","Noto Sans Thai",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11161C; --card:#18202A; --ink:#E7ECF2; --ink2:#9AA7B6; --rule:#2B3541; --bub:#6F7C8C;
+  --accent:#6EA2FF; --accent-ink:#0B1220; --accent-bg:#1B2A44;
+  --fill:#E7ECF2; --fill-ink:#11161C;
+  --good:#3FC48C; --good-bg:#16342B; --bad:#FF7A6B; --bad-bg:#3B1E1C; --warn:#E3A33B; --warn-bg:#3A2D12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#11161C; --card:#18202A; --ink:#E7ECF2; --ink2:#9AA7B6; --rule:#2B3541; --bub:#6F7C8C;
+  --accent:#6EA2FF; --accent-ink:#0B1220; --accent-bg:#1B2A44;
+  --fill:#E7ECF2; --fill-ink:#11161C;
+  --good:#3FC48C; --good-bg:#16342B; --bad:#FF7A6B; --bad-bg:#3B1E1C; --warn:#E3A33B; --warn-bg:#3A2D12; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--paper);color:var(--ink);font:400 15px/1.6 var(--f-body);
+  padding-block:20px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:20px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;line-height:1.25}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.mast{display:flex;flex-direction:column;gap:6px}
+.brand{display:flex;align-items:center;gap:12px}
+.brand .dot{width:26px;height:26px;border-radius:50%;background:var(--fill);box-shadow:0 0 0 3px var(--paper),0 0 0 4.5px var(--fill)}
+.brand h1{font-size:30px;font-weight:700;letter-spacing:.01em}
+.lede{margin:0;color:var(--ink2);max-width:62ch}
+
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--rule);overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;margin-bottom:-1px;padding:10px 16px;cursor:pointer;
+  display:flex;align-items:center;gap:9px;color:var(--ink2);font-weight:500;white-space:nowrap}
+.tabs button b{font:500 13px/1 var(--f-mono);display:grid;place-items:center;width:24px;height:24px;border-radius:50%;border:1.5px solid var(--bub)}
+.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+.tabs button[aria-selected="true"] b{background:var(--fill);border-color:var(--fill);color:var(--fill-ink)}
+
+.panel{display:flex;flex-direction:column;gap:18px}
+.split{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:28px;align-items:start}
+.ctl{display:flex;flex-direction:column;gap:18px;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:20px}
+.field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.field label,.lbl{font-weight:600;font-size:14px}
+.field small{color:var(--ink2);font-size:12.5px}
+input[type=text],input[type=number]{width:100%;padding:9px 11px;border:1px solid var(--bub);border-radius:6px;background:var(--paper);min-width:0}
+input[type=number]{font-family:var(--f-mono)}
+.seg{display:flex;border:1px solid var(--bub);border-radius:6px;overflow:hidden}
+.seg button{flex:1;padding:8px 6px;background:var(--paper);border:0;border-right:1px solid var(--bub);cursor:pointer;font-weight:500;color:var(--ink2);min-width:0}
+.seg button:last-child{border-right:0}
+.seg button[aria-pressed="true"]{background:var(--fill);color:var(--fill-ink)}
+.check{display:flex;gap:10px;align-items:flex-start;cursor:pointer}
+.check input{margin-top:5px;width:16px;height:16px;accent-color:var(--accent)}
+.tips{margin:0;padding-left:20px;color:var(--ink2);font-size:13.5px;display:flex;flex-direction:column;gap:5px}
+.tips b{color:var(--ink);font-weight:600}
+
+.desk{background:var(--rule);border-radius:10px;padding:clamp(12px,3vw,28px);display:flex;flex-direction:column;align-items:center;gap:12px;min-width:0}
+.desk img{display:block;width:100%;max-width:520px;height:auto;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25),0 10px 28px rgba(0,0,0,.18)}
+.cap{margin:0;font-size:13px;color:var(--ink2);text-align:center}
+
+.bar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:flex-end;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:16px 20px}
+.bar .field{flex:0 1 auto}
+.bar .grow{flex:1 1 260px}
+.row{display:flex;gap:8px;align-items:stretch}
+.row input{flex:1}
+.stat{font:500 14px/1.4 var(--f-mono);color:var(--ink2);flex:1 1 200px}
+.stat b{color:var(--ink);font-weight:500}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:9px 16px;border-radius:6px;border:1px solid var(--bub);background:var(--card);cursor:pointer;font-weight:500;white-space:nowrap}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.sm{padding:5px 11px;font-size:13px}
+.btn.ghost{border-color:transparent;color:var(--ink2)}
+.btn[disabled]{opacity:.55;cursor:progress}
+
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));gap:0 22px;background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:10px 18px}
+.q{display:flex;align-items:center;gap:10px;padding:5px 6px;border-bottom:1px solid var(--rule);min-width:0}
+.q .qn{font:500 13px/1 var(--f-mono);color:var(--ink2);width:26px;text-align:right;flex:none}
+.q .opts{display:flex;gap:6px}
+.q.blank{background:var(--warn-bg)}
+.q.multi{background:var(--warn-bg)}
+.opt{width:28px;height:28px;border-radius:50%;border:1.5px solid var(--bub);background:var(--card);color:var(--ink2);font:500 12px/1 var(--f-body);display:grid;place-items:center;cursor:pointer;padding:0;flex:none}
+.opt:hover{border-color:var(--ink);color:var(--ink)}
+.opt.on{background:var(--fill);border-color:var(--fill);color:var(--fill-ink)}
+.opt.on.good{background:var(--good);border-color:var(--good);color:#fff}
+.opt.on.bad{background:var(--bad);border-color:var(--bad);color:#fff}
+.opt.on.warn{background:var(--warn);border-color:var(--warn);color:#fff}
+.opt.key{border:2px dashed var(--good);color:var(--good)}
+
+.drop{border:2px dashed var(--bub);border-radius:10px;padding:22px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center;background:var(--card)}
+.drop.over{border-color:var(--accent);background:var(--accent-bg)}
+.drop p{margin:0;color:var(--ink2);font-size:14px}
+.drop .acts{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+.sens{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:14px}
+.sens label{font-weight:600}
+.sens input{accent-color:var(--accent);width:min(220px,100%)}
+.sens span{color:var(--ink2)}
+.note{background:var(--warn-bg);color:var(--ink);border-left:4px solid var(--warn);padding:10px 14px;border-radius:4px;font-size:14px}
+.note button{background:none;border:0;padding:0;color:var(--accent);text-decoration:underline;cursor:pointer}
+
+.card{background:var(--card);border:1px solid var(--rule);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:14px;min-width:0}
+.card h2{font-size:18px}
+.sum{display:flex;flex-wrap:wrap;gap:6px 28px;margin:0}
+.sum div{display:flex;flex-direction:column}
+.sum dt{font-size:12.5px;color:var(--ink2)}
+.sum dd{margin:0;font:500 20px/1.3 var(--f-mono)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{text-align:left;font-weight:600;font-size:12.5px;color:var(--ink2);padding:6px 10px;border-bottom:1px solid var(--bub);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--rule);vertical-align:middle}
+td.num,td.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+td.fn{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.sc{white-space:nowrap}
+td.acts{white-space:nowrap;text-align:right}
+tr.sel td{background:var(--accent-bg)}
+tr.err td.errtxt{color:var(--bad)}
+.pill{display:inline-block;font-size:12px;padding:1px 9px;border-radius:99px;margin-right:4px;background:var(--warn-bg);color:var(--warn);font-weight:500}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.ok{background:var(--good-bg);color:var(--good)}
+.bars{display:grid;grid-template-columns:repeat(var(--n),minmax(9px,1fr));gap:3px;align-items:end;height:84px;min-width:calc(var(--n)*12px);border-bottom:1px solid var(--bub)}
+.bars span{background:var(--accent);min-height:2px;border-radius:2px 2px 0 0}
+.bars span.low{background:var(--bad)}
+.barlbl{display:grid;grid-template-columns:repeat(var(--n),minmax(9px,1fr));gap:3px;min-width:calc(var(--n)*12px);font:400 10.5px/1.6 var(--f-mono);color:var(--ink2)}
+.barlbl span{text-align:center;overflow:visible;white-space:nowrap}
+.hint{margin:0;font-size:13px;color:var(--ink2)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--ink2);align-items:center}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:50%;vertical-align:-2px;margin-right:6px}
+
+.detail{display:flex;flex-direction:column;gap:16px}
+.dhead{display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center;justify-content:space-between}
+.dhead h2{font-size:18px;overflow-wrap:anywhere;min-width:0}
+.dmeta{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.dmeta label{font-size:13px;color:var(--ink2);display:flex;gap:8px;align-items:center}
+.dmeta input{width:150px;font-family:var(--f-mono);padding:5px 9px}
+.dscore{font:500 22px/1 var(--f-mono)}
+.dsplit{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);gap:20px;align-items:start}
+.dsplit canvas{width:100%;height:auto;display:block;border-radius:6px;background:#222}
+.dsplit .qgrid{grid-template-columns:repeat(auto-fill,minmax(212px,1fr));max-height:640px;overflow:auto}
+
+.toast{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;pointer-events:none;
+  padding:0 max(16px,env(safe-area-inset-left,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-right,0px))}
+.toast div{background:var(--fill);color:var(--fill-ink);padding:10px 16px;border-radius:8px;font-size:14px;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:560px}
+textarea.copyarea{width:100%;min-height:120px;font:12px/1.5 var(--f-mono);background:var(--paper);border:1px solid var(--bub);border-radius:6px;padding:8px}
+
+.live{position:fixed;inset:0;z-index:100;background:#0b0f14;color:#fff;display:flex;flex-direction:column}
+.lhead{display:flex;gap:12px;align-items:center;justify-content:space-between;padding-block:calc(10px + env(safe-area-inset-top,0px)) 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lstat{font-weight:600;font-size:15px;min-width:0;line-height:1.4}
+.lstat.ok{color:#5fe0a1}.lstat.warn{color:#ffc15e}
+.lstage{position:relative;flex:1;min-height:0}
+.lstage video,.lstage canvas{position:absolute;inset:0;width:100%;height:100%}
+.lstage video{object-fit:contain;background:#000}
+.lfoot{display:flex;flex-direction:column;gap:10px;padding-top:12px;padding-bottom:calc(14px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.lsum{font:500 13px/1.4 var(--f-mono);color:#aab6c5}
+.lres{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;justify-content:space-between;background:#18212c;border-radius:10px;padding:12px 14px}
+.lscore{font:700 40px/1 var(--f-display)}
+.lscore small{font-size:20px;color:#aab6c5;font-weight:500}
+.lmeta{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px;color:#c9d3df;flex:1 1 150px;min-width:0}
+.lmeta .w{color:#ffc15e}
+.lacts{display:flex;gap:8px;flex-wrap:wrap}
+.lbtn{padding:10px 16px;border-radius:8px;border:1px solid #3a4756;background:#243040;color:#fff;cursor:pointer;font-weight:600;white-space:nowrap}
+.lbtn.pri{background:#2f7bff;border-color:#2f7bff}
+.lbtn.ghost{background:none}
+@media (max-width:860px){
+  .split,.dsplit{grid-template-columns:minmax(0,1fr)}
+  .brand h1{font-size:26px}
+}
+@media (max-width:640px){
+  .tabs{gap:0}
+  .tabs button{padding:10px 9px;gap:6px;font-size:14px}
+  .tabs button b{width:22px;height:22px;font-size:12px}
+  .btn{white-space:normal;text-align:center}
+  .bar{padding:14px}
+  .card{padding:16px 14px}
+  .scroll:has(table){overflow-x:visible}
+  table,tbody{display:block}
+  thead{display:none}
+  tr{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;padding:10px 6px;border-bottom:1px solid var(--rule)}
+  tr.sel{background:var(--accent-bg)}
+  tr.sel td{background:none}
+  td{border:0;padding:0}
+  td.fn{display:none}
+  td.acts{margin-left:auto}
+  tr.err td.errtxt{flex:1 1 100%;order:3}
+  td.sc{font-weight:600}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style></head><body>
+
+<div class="wrap">
+  <header class="mast">
+    <div class="brand"><span class="dot" aria-hidden="true"></span><h1>Exam Scanner</h1></div>
+    <p class="lede">ตรวจข้อสอบแบบฝน พิมพ์กระดาษคำตอบ ใส่เฉลย แล้วถ่ายรูปกระดาษที่นักเรียนฝนแล้ว ระบบอ่านรอยฝนและตรวจให้ในเบราว์เซอร์ของคุณ รูปไม่ถูกส่งออกไปที่ใด</p>
+  </header>
+
+  <nav class="tabs" role="tablist" aria-label="ขั้นตอน">
+    <button role="tab" id="t1" aria-controls="p1" aria-selected="true"><b>1</b>กระดาษคำตอบ</button>
+    <button role="tab" id="t2" aria-controls="p2" aria-selected="false"><b>2</b>เฉลย</button>
+    <button role="tab" id="t3" aria-controls="p3" aria-selected="false"><b>3</b>ตรวจ</button>
+  </nav>
+
+  <section id="p1" class="panel" role="tabpanel" aria-labelledby="t1">
+    <div class="split">
+      <div class="ctl">
+        <div class="field"><label for="title">ชื่อการสอบ</label><input id="title" type="text" maxlength="60" autocomplete="off"></div>
+        <div class="field"><label for="nQ">จำนวนข้อ</label><input id="nQ" type="number" min="1" max="100" inputmode="numeric"><small>ตั้งได้ 1 ถึง 100 ข้อ</small></div>
+        <div class="field"><span class="lbl" id="lblC">ตัวเลือกต่อข้อ</span>
+          <div class="seg" id="segC" role="group" aria-labelledby="lblC"><button type="button" data-v="4">4 ตัวเลือก</button><button type="button" data-v="5">5 ตัวเลือก</button></div></div>
+        <div class="field"><span class="lbl" id="lblL">ชื่อตัวเลือก</span>
+          <div class="seg" id="segL" role="group" aria-labelledby="lblL"><button type="button" data-v="th">ก ข ค ง</button><button type="button" data-v="en">A B C D</button><button type="button" data-v="num">1 2 3 4</button></div></div>
+        <label class="check"><input type="checkbox" id="withId"><span>มีช่องฝนรหัสนักเรียน 8 หลัก</span></label>
+        <ol class="tips">
+          <li><b>บันทึกรูปกระดาษ</b> แล้วพิมพ์บน A4 เต็มหน้า ให้เห็นสี่เหลี่ยมดำครบทั้ง 4 มุม</li>
+          <li>ให้นักเรียนฝนวงกลมด้วยดินสอ 2B ข้อละ 1 วง</li>
+          <li>ถ่ายรูปให้เห็นสี่เหลี่ยมดำทั้ง 4 มุม แสงสม่ำเสมอ ไม่มีเงาทับวงกลม</li>
+        </ol>
+      </div>
+      <div class="desk">
+        <img id="sheetImg" alt="ตัวอย่างกระดาษคำตอบที่สร้างจากค่าที่ตั้งไว้" width="1240" height="1754">
+        <p class="cap">คลิกขวาที่รูปแล้วเลือกบันทึกรูปภาพ หรือกดค้างที่รูปบนมือถือ</p>
+      </div>
+    </div>
+  </section>
+
+  <section id="p2" class="panel" role="tabpanel" aria-labelledby="t2" hidden>
+    <div class="bar">
+      <div class="stat" id="keyCount"></div>
+      <div class="field grow"><label for="quick">พิมพ์เฉลยทีเดียว</label>
+        <div class="row"><input id="quick" type="text" placeholder="เช่น กขคงกขคง หรือ ABCDABCD หรือ 12341234" autocomplete="off"><button class="btn" id="quickGo" type="button">ใส่เฉลย</button></div></div>
+      <div class="field"><label for="pts">คะแนนต่อข้อ</label><input id="pts" type="number" min="0.25" max="10" step="0.25" style="width:96px"></div>
+      <button class="btn" id="keyScan" type="button">อ่านเฉลยจากรูปกระดาษ</button>
+      <button class="btn ghost" id="keyClear" type="button">ล้างเฉลย</button>
+      <input type="file" id="keyFile" accept="image/*" hidden>
+    </div>
+    <div id="keyGrid" class="qgrid"></div>
+    <p class="hint">กดวงกลมเพื่อเลือกคำตอบที่ถูก กดซ้ำเพื่อยกเลิก ข้อที่ยังไม่เลือกจะไม่นับคะแนน</p>
+  </section>
+
+  <section id="p3" class="panel" role="tabpanel" aria-labelledby="t3" hidden>
+    <div class="drop" id="drop">
+      <div class="acts">
+        <button class="btn primary" id="liveBtn" type="button" hidden>สแกนสดต่อเนื่อง</button>
+        <button class="btn" id="shoot" type="button">ถ่ายด้วยกล้อง</button>
+        <button class="btn" id="pick" type="button">เลือกรูปกระดาษคำตอบ</button>
+        <button class="btn" id="sample" type="button">ลองกับกระดาษตัวอย่าง</button>
+      </div>
+      <p>บนมือถือ ปุ่มถ่ายด้วยกล้องจะเปิดกล้องทันที ถ่ายใบละ 1 รูป ถ้าเห็นสี่เหลี่ยมดำไม่ครบ 4 มุม ระบบจะบอกว่าขาดมุมไหนให้ถ่ายใหม่ เลือกรูปที่ถ่ายไว้แล้วได้หลายรูปพร้อมกัน หรือลากรูปมาวางตรงนี้</p>
+      <p id="prog" role="status"></p>
+      <input type="file" id="files" accept="image/*" multiple hidden>
+      <input type="file" id="cam" accept="image/*" capture="environment" hidden>
+    </div>
+    <div class="sens"><label for="sens">ความไวในการอ่านรอยฝน</label><input id="sens" type="range" min="1" max="5" step="1"><span id="sensTxt"></span></div>
+    <div id="keyWarn" class="note" hidden></div>
+
+    <div id="resList" class="card" hidden>
+      <h2>ผลการตรวจ</h2>
+      <dl class="sum" id="sum"></dl>
+      <div class="scroll"><table>
+        <thead><tr><th>#</th><th>ไฟล์</th><th>รหัส</th><th>คะแนน</th><th>ข้อสังเกต</th><th></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table></div>
+      <div class="row" style="justify-content:flex-start;flex-wrap:wrap">
+        <button class="btn" id="copy" type="button">คัดลอกตาราง (วางใน Excel หรือ Google Sheets)</button>
+        <button class="btn ghost" id="clearRes" type="button">ล้างผลทั้งหมด</button>
+      </div>
+      <div id="copyBox" hidden></div>
+    </div>
+
+    <div id="itemCard" class="card" hidden>
+      <h2>ร้อยละของคนที่ตอบถูกในแต่ละข้อ</h2>
+      <div class="scroll"><div id="bars" class="bars"></div><div id="barLbl" class="barlbl"></div></div>
+      <p class="hint">แท่งสีแดงคือข้อที่ตอบถูกไม่ถึง 40% ลองตรวจว่าเฉลยหรือข้อสอบข้อนั้นมีปัญหาหรือไม่</p>
+    </div>
+
+    <div id="detail" class="card detail" hidden></div>
+  </section>
+</div>
+<div class="live" id="liveBox" hidden role="dialog" aria-label="สแกนสด">
+  <div class="lhead"><div id="lstat" class="lstat" role="status">กำลังเปิดกล้อง...</div><button class="lbtn" id="lclose" type="button">ปิดกล้อง</button></div>
+  <div class="lstage" id="lstage"><video id="lvid" playsinline muted autoplay></video><canvas id="lcv"></canvas></div>
+  <div class="lfoot"><div class="lsum" id="lsum"></div><div class="lres" id="lres" hidden></div></div>
+</div>
+<div class="toast" aria-live="polite"><div id="toastMsg" hidden></div></div>
+
+<script>
+/* ===== OMR core: sheet layout, marker detection, bubble reading ===== */
+const SW = 1240, SH = 1754, MKC = 90;
+const LABELS = { th: ['ก', 'ข', 'ค', 'ง', 'จ'], en: ['A', 'B', 'C', 'D', 'E'], num: ['1', '2', '3', '4', '5'] };
+
+function makeLayout(nQ, nC, withId) {
+  const W = SW, H = SH;
+  const L = {
+    W, H, nQ, nC, withId,
+    markers: [
+      { x: MKC, y: MKC, s: 100 },
+      { x: W - MKC, y: MKC, s: 60 },
+      { x: W - MKC, y: H - MKC, s: 60 },
+      { x: MKC, y: H - MKC, s: 60 }
+    ]
+  };
+  let qTop;
+  if (withId) {
+    L.idCols = 8; L.idR = 14; L.idSp = 48; L.idSpY = 34; L.idX0 = 724; L.idY0 = 300; L.idBoxY = 214;
+    L.id = [];
+    for (let d = 0; d < L.idCols; d++) {
+      const col = [];
+      for (let v = 0; v < 10; v++) col.push({ x: L.idX0 + d * L.idSp, y: L.idY0 + v * L.idSpY });
+      L.id.push(col);
+    }
+    qTop = 680;
+  } else qTop = 450;
+  const left = 150, usable = W - 300;
+  const nCols = Math.max(1, Math.ceil(nQ / 25));
+  const rows = Math.ceil(nQ / nCols);
+  const colW = Math.min(340, usable / nCols);
+  const sp = Math.min(54, (colW - 100) / nC);
+  const y0 = qTop + 28, yEnd = H - 215;
+  const rowSp = Math.min(40, (yEnd - y0) / Math.max(1, rows - 1));
+  const r = Math.min(17, sp * 0.36, rowSp * 0.42);
+  const off = left + (usable - nCols * colW) / 2;
+  L.q = []; L.qNum = [];
+  for (let q = 0; q < nQ; q++) {
+    const col = Math.floor(q / rows), row = q % rows;
+    const colX = off + col * colW, y = y0 + row * rowSp;
+    const arr = [];
+    for (let c = 0; c < nC; c++) arr.push({ x: colX + 72 + c * sp, y });
+    L.q.push(arr);
+    L.qNum.push({ x: colX + 46, y });
+  }
+  L.r = r; L.sp = sp; L.rowSp = rowSp; L.qTop = qTop; L.rows = rows; L.nCols = nCols;
+  return L;
+}
+
+/* ---- drawing the printable sheet (canvas 2D) ---- */
+function drawSheet(ctx, L, o) {
+  const F = '"IBM Plex Sans Thai","Bai Jamjuree","Noto Sans Thai",sans-serif';
+  const labels = o.labels || LABELS.th;
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, L.W, L.H);
+  ctx.fillStyle = '#000';
+  for (const m of L.markers) ctx.fillRect(m.x - m.s / 2, m.y - m.s / 2, m.s, m.s);
+  ctx.textBaseline = 'alphabetic'; ctx.textAlign = 'left'; ctx.fillStyle = '#111';
+  let fs = 52; const maxW = L.withId ? 520 : 940;
+  ctx.font = '700 ' + fs + 'px ' + F;
+  const title = o.title || 'กระดาษคำตอบ';
+  while (ctx.measureText(title).width > maxW && fs > 24) { fs -= 2; ctx.font = '700 ' + fs + 'px ' + F; }
+  ctx.fillText(title, 150, 205);
+  ctx.fillStyle = '#555'; ctx.font = '500 24px ' + F;
+  ctx.fillText('กระดาษคำตอบ  ·  ' + L.nQ + ' ข้อ  ·  ' + L.nC + ' ตัวเลือก', 150, 250);
+  const line = (x1, x2, y, label) => {
+    ctx.strokeStyle = '#777'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke();
+    ctx.fillStyle = '#333'; ctx.font = '500 22px ' + F; ctx.fillText(label, x1, y - 8);
+  };
+  if (L.withId) {
+    line(150, 660, 340, 'ชื่อ-สกุล');
+    line(150, 660, 420, 'ห้อง / เลขที่');
+    line(150, 660, 500, 'วันที่');
+    ctx.fillStyle = '#333'; ctx.font = '600 22px ' + F; ctx.textAlign = 'left';
+    ctx.fillText('รหัสนักเรียน (เขียนตัวเลขแล้วฝนวงกลมใต้ตัวเลข)', 700, 190);
+    ctx.strokeStyle = '#555'; ctx.lineWidth = 2;
+    for (let d = 0; d < L.idCols; d++) ctx.strokeRect(L.idX0 + d * L.idSp - 20, L.idBoxY, 40, 40);
+    for (let d = 0; d < L.idCols; d++) for (let v = 0; v < 10; v++) {
+      const b = L.id[d][v]; bubble(ctx, b.x, b.y, L.idR, String(v), F);
+    }
+  } else {
+    line(150, 740, 330, 'ชื่อ-สกุล');
+    line(780, 1090, 330, 'ห้อง / เลขที่');
+    line(150, 740, 400, 'วันที่');
+  }
+  for (let q = 0; q < L.nQ; q++) {
+    const n = L.qNum[q];
+    ctx.fillStyle = '#222'; ctx.font = '600 21px ' + F; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    ctx.fillText(String(q + 1), n.x, n.y + 1);
+    for (let c = 0; c < L.nC; c++) bubble(ctx, L.q[q][c].x, L.q[q][c].y, L.r, labels[c], F);
+  }
+  ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; ctx.fillStyle = '#444'; ctx.font = '500 21px ' + F;
+  ctx.fillText('ใช้ดินสอ 2B ฝนวงกลมให้ดำเต็มวง ข้อละ 1 วง ถ้าแก้คำตอบให้ลบรอยเดิมให้สะอาด', L.W / 2, 1618);
+}
+function bubble(ctx, x, y, r, label, F) {
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill();
+  ctx.lineWidth = 2.4; ctx.strokeStyle = '#333'; ctx.stroke();
+  ctx.fillStyle = '#b8b8b8'; ctx.font = '500 ' + Math.round(r * 1.05) + 'px ' + F;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, x, y + 1);
+}
+
+/* ---- geometry ---- */
+function homography(src, dst) {
+  const A = [], b = [];
+  for (let i = 0; i < 4; i++) {
+    const [x, y] = src[i], [u, v] = dst[i];
+    A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u);
+    A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v);
+  }
+  const n = 8;
+  for (let i = 0; i < n; i++) A[i].push(b[i]);
+  for (let c = 0; c < n; c++) {
+    let p = c;
+    for (let r = c + 1; r < n; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+    [A[c], A[p]] = [A[p], A[c]];
+    const d = A[c][c];
+    if (Math.abs(d) < 1e-12) return null;
+    for (let k = c; k <= n; k++) A[c][k] /= d;
+    for (let r = 0; r < n; r++) if (r !== c) {
+      const f = A[r][c];
+      if (f) for (let k = c; k <= n; k++) A[r][k] -= f * A[c][k];
+    }
+  }
+  const h = A.map(r => r[n]); h.push(1);
+  return h;
+}
+function applyH(H, x, y) {
+  const w = H[6] * x + H[7] * y + H[8];
+  return [(H[0] * x + H[1] * y + H[2]) / w, (H[3] * x + H[4] * y + H[5]) / w];
+}
+
+/* ---- image to binary (adaptive threshold) and blobs ---- */
+let _I = null, _O = null, _L = null, _S = null;   // buffers reused between frames to avoid per-frame allocation
+function adaptiveDark(g, w, h) {
+  const win = Math.max(15, Math.round(Math.max(w, h) * 0.08) | 1), half = win >> 1;
+  const W1 = w + 1, isz = W1 * (h + 1);
+  if (!_I || _I.length < isz) _I = new Float64Array(isz);
+  const I = _I; I.fill(0, 0, W1); for (let y = 0; y <= h; y++) I[y * W1] = 0;
+  for (let y = 0; y < h; y++) {
+    let row = 0;
+    for (let x = 0; x < w; x++) { row += g[y * w + x]; I[(y + 1) * W1 + x + 1] = I[y * W1 + x + 1] + row; }
+  }
+  if (!_O || _O.length < w * h) _O = new Uint8Array(w * h);
+  const out = _O;
+  for (let y = 0; y < h; y++) {
+    const y0 = Math.max(0, y - half), y1 = Math.min(h - 1, y + half);
+    for (let x = 0; x < w; x++) {
+      const x0 = Math.max(0, x - half), x1 = Math.min(w - 1, x + half);
+      const area = (x1 - x0 + 1) * (y1 - y0 + 1);
+      const s = I[(y1 + 1) * W1 + x1 + 1] - I[y0 * W1 + x1 + 1] - I[(y1 + 1) * W1 + x0] + I[y0 * W1 + x0];
+      out[y * w + x] = g[y * w + x] < (s / area) * 0.72 ? 1 : 0;
+    }
+  }
+  return out;
+}
+function components(bin, w, h) {
+  const n = w * h, comps = [];
+  if (!_L || _L.length < n) { _L = new Uint8Array(n); _S = new Int32Array(n); }
+  const lab = _L, stack = _S; lab.fill(0, 0, n);
+  for (let i = 0; i < n; i++) {
+    if (!bin[i] || lab[i]) continue;
+    let sp = 0; stack[sp++] = i; lab[i] = 1;
+    let minx = w, maxx = 0, miny = h, maxy = 0, area = 0, sx = 0, sy = 0;
+    while (sp) {
+      const p = stack[--sp], y = (p / w) | 0, x = p - y * w;
+      area++; sx += x; sy += y;
+      if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
+      if (x > 0 && bin[p - 1] && !lab[p - 1]) { lab[p - 1] = 1; stack[sp++] = p - 1; }
+      if (x < w - 1 && bin[p + 1] && !lab[p + 1]) { lab[p + 1] = 1; stack[sp++] = p + 1; }
+      if (y > 0 && bin[p - w] && !lab[p - w]) { lab[p - w] = 1; stack[sp++] = p - w; }
+      if (y < h - 1 && bin[p + w] && !lab[p + w]) { lab[p + w] = 1; stack[sp++] = p + w; }
+    }
+    comps.push({ minx, maxx, miny, maxy, area, cx: sx / area, cy: sy / area });
+  }
+  return comps;
+}
+
+/* ---- find the 4 corner squares; the big one is top-left ---- */
+function detectMarkers(gray, w, h) {
+  const md = Math.max(w, h);
+  const bin = adaptiveDark(gray, w, h);
+  const comps = components(bin, w, h);
+  let cand = comps.filter(c => {
+    const bw = c.maxx - c.minx + 1, bh = c.maxy - c.miny + 1;
+    const asp = bw / bh, fill = c.area / (bw * bh);
+    return bw >= md * 0.012 && bh >= md * 0.012 && bw <= md * 0.2 && bh <= md * 0.2 && asp > 0.6 && asp < 1.67 && fill > 0.55;
+  });
+  cand.sort((a, b) => b.area - a.area);
+  cand = cand.slice(0, 14);
+  const found = [];
+  const n = cand.length;
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) for (let k = j + 1; k < n; k++) for (let l = k + 1; l < n; l++) {
+    const four = [cand[i], cand[j], cand[k], cand[l]];
+    const byArea = four.slice().sort((a, b) => a.area - b.area);
+    if (byArea[2].area / byArea[0].area > 2.4) continue;
+    const ratio = byArea[3].area / byArea[2].area;
+    if (ratio < 1.6 || ratio > 5.5) continue;
+    const mx = (four[0].cx + four[1].cx + four[2].cx + four[3].cx) / 4;
+    const my = (four[0].cy + four[1].cy + four[2].cy + four[3].cy) / 4;
+    const ord = four.slice().sort((a, b) => Math.atan2(a.cy - my, a.cx - mx) - Math.atan2(b.cy - my, b.cx - mx));
+    const bi = ord.indexOf(byArea[3]);
+    const p = [0, 1, 2, 3].map(t => ord[(bi + t) % 4]);
+    let sign = 0, convex = true;
+    for (let t = 0; t < 4; t++) {
+      const a = p[t], b = p[(t + 1) % 4], c = p[(t + 2) % 4];
+      const cr = (b.cx - a.cx) * (c.cy - b.cy) - (b.cy - a.cy) * (c.cx - b.cx);
+      if (cr === 0) { convex = false; break; }
+      if (sign === 0) sign = Math.sign(cr); else if (Math.sign(cr) !== sign) { convex = false; break; }
+    }
+    if (!convex) continue;
+    const d = (a, b) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
+    const rr = (d(p[0], p[1]) + d(p[2], p[3])) / (d(p[1], p[2]) + d(p[3], p[0]));
+    if (rr < 0.45 || rr > 0.95) continue;
+    /* marker size must match the sheet's own proportions (small square = 60/1060 of the top edge, big = 100/1060) */
+    const dTop = (d(p[0], p[1]) + d(p[2], p[3])) / 2;
+    const bigR = Math.sqrt(p[0].area) / dTop, smallR = [1, 2, 3].map(t => Math.sqrt(p[t].area) / dTop);
+    if (bigR < 0.06 || bigR > 0.15 || smallR.some(v => v < 0.035 || v > 0.09)) continue;
+    let area = 0;
+    for (let t = 0; t < 4; t++) { const a = p[t], b = p[(t + 1) % 4]; area += a.cx * b.cy - b.cx * a.cy; }
+    area = Math.abs(area) / 2;
+    found.push({ area, p });
+  }
+  found.sort((a, b) => b.area - a.area);
+  const top = cand.length ? cand.slice(0, 4).filter(c => c.area >= cand[0].area * 0.25) : [];
+  const seen = { 'ซ้ายบน': 0, 'ขวาบน': 0, 'ซ้ายล่าง': 0, 'ขวาล่าง': 0 };
+  top.forEach(c => { seen[(c.cx < w / 2 ? 'ซ้าย' : 'ขวา') + (c.cy < h / 2 ? 'บน' : 'ล่าง')]++; });
+  const missing = Object.keys(seen).filter(k => !seen[k]);
+  let err;
+  if (!top.length) err = 'ไม่เห็นสี่เหลี่ยมดำที่มุมกระดาษเลย';
+  else if (top.length < 4 && missing.length) err = 'เห็นสี่เหลี่ยมดำเพียง ' + top.length + ' จาก 4 มุม ขาดมุม' + missing.join(' ') + 'ของภาพ';
+  else err = 'เห็นสี่เหลี่ยมดำแล้วแต่จัดตำแหน่งไม่ได้ ภาพอาจเอียงมากหรือมีเงาทับมุม';
+  const quads = found.slice(0, 6).map(f => f.p.map(c => [c.cx, c.cy]));
+  return { ok: quads.length > 0, pts: quads[0], quads, err, found: top.length, missing };
+}
+
+/* try each candidate quad; accept the first whose predicted bubble rings really line up with the image */
+function findSheet(gray, w, h, L) {
+  const mk = detectMarkers(gray, w, h);
+  for (const pts of mk.quads) {
+    const rd = readSheet(gray, w, h, L, pts);
+    if (rd.align >= 0.05) return { ok: true, pts, rd };
+  }
+  return { ok: false, err: mk.err, found: mk.found, missing: mk.missing };
+}
+
+/* ---- read bubbles ---- */
+const RINGS = [[0, 1], [0.4, 6], [0.8, 12]];
+function readSheet(gray, w, h, L, pts) {
+  const src = L.markers.map(m => [m.x, m.y]);
+  const H = homography(src, pts);
+  const samp = (x, y) => {
+    if (x < 0 || y < 0 || x > w - 1.001 || y > h - 1.001) return null;
+    const x0 = x | 0, y0 = y | 0, fx = x - x0, fy = y - y0, i = y0 * w + x0;
+    return gray[i] * (1 - fx) * (1 - fy) + gray[i + 1] * fx * (1 - fy) + gray[i + w] * (1 - fx) * fy + gray[i + w + 1] * fx * fy;
+  };
+  const meanAt = (cx, cy, r) => {
+    const rr = r * 0.6; let s = 0, n = 0;
+    for (const [f, k] of RINGS) for (let t = 0; t < k; t++) {
+      const a = (t / k) * Math.PI * 2 + 0.4;
+      const [px, py] = applyH(H, cx + Math.cos(a) * rr * f, cy + Math.sin(a) * rr * f);
+      const v = samp(px, py);
+      if (v !== null) { s += v; n++; }
+    }
+    return n ? s / n : 255;
+  };
+  const means = L.q.map(row => row.map(b => meanAt(b.x, b.y, L.r)));
+  const idMeans = L.withId ? L.id.map(col => col.map(b => meanAt(b.x, b.y, L.idR))) : [];
+  /* alignment check: the printed ring should be darker than the paper just outside it */
+  const ringAt = (cx, cy, r, f) => {
+    let s = 0, n = 0;
+    for (let t = 0; t < 12; t++) {
+      const a = (t / 12) * Math.PI * 2 + 0.2;
+      const [px, py] = applyH(H, cx + Math.cos(a) * r * f, cy + Math.sin(a) * r * f);
+      const v = samp(px, py);
+      if (v !== null) { s += v; n++; }
+    }
+    return n >= 6 ? s / n : null;
+  };
+  const contrasts = [];
+  L.q.forEach(row => row.forEach(b => {
+    const ring = ringAt(b.x, b.y, L.r, 1), out = ringAt(b.x, b.y, L.r, 1.55);
+    if (ring !== null && out !== null) contrasts.push((out - ring) / Math.max(out, 1));
+  }));
+  contrasts.sort((a, b) => a - b);
+  const align = contrasts.length ? contrasts[contrasts.length >> 1] : 0;
+  const rowMax = a => Math.max.apply(null, a);
+  const maxes = means.map(rowMax).concat(idMeans.map(rowMax)).sort((a, b) => a - b);
+  const paper = maxes.length ? maxes[maxes.length >> 1] : 255;
+  const toDark = a => { const ref = Math.max(rowMax(a), paper * 0.85); return a.map(v => Math.min(1, Math.max(0, (ref - v) / ref))); };
+  return { H, dark: means.map(toDark), idDark: idMeans.map(toDark), paper, align };
+}
+
+/* ---- decisions ---- */
+function decideRow(d, T) {
+  const mx = Math.max.apply(null, d);
+  if (mx < T) return { v: -1, marks: [] };
+  const marks = [];
+  d.forEach((x, i) => { if (x >= T && x >= 0.55 * mx) marks.push(i); });
+  return { v: marks.length === 1 ? marks[0] : -2, marks };
+}
+function sensToT(s) { return [0.34, 0.28, 0.22, 0.17, 0.13][Math.min(5, Math.max(1, s)) - 1]; }
+
+
+/*CS*/var __CORE_SRC = (document.currentScript && document.currentScript.textContent) ? document.currentScript.textContent.split('/*CS*/')[0] : '';
+</script>
+<script>
+(function () {
+  const $ = s => document.querySelector(s);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const state = { cfg: { title: 'ข้อสอบปลายภาค', nQ: 30, nC: 4, lab: 'th', withId: true }, key: [], points: 1, sens: 3, results: [], sel: -1, busy: false };
+  const LS = 'tuad-khosob-fon-v1';
+  const SENS_TXT = ['เฉพาะรอยฝนเข้มมาก', 'ค่อนข้างเข้ม', 'มาตรฐาน', 'รอยจางก็นับ', 'รอยจางมากก็นับ'];
+
+  function load() {
+    try {
+      const j = JSON.parse(localStorage.getItem(LS) || 'null');
+      if (j) { Object.assign(state.cfg, j.cfg || {}); state.key = j.key || []; state.points = +j.points || 1; state.sens = +j.sens || 3; }
+    } catch (e) { }
+    sanitize();
+  }
+  function save() { try { localStorage.setItem(LS, JSON.stringify({ cfg: state.cfg, key: state.key, points: state.points, sens: state.sens })); } catch (e) { } }
+  function sanitize() {
+    const c = state.cfg;
+    c.nQ = Math.min(100, Math.max(1, Math.round(+c.nQ) || 30));
+    c.nC = c.nC === 5 ? 5 : 4;
+    if (!LABELS[c.lab]) c.lab = 'th';
+    c.withId = !!c.withId;
+    c.title = String(c.title || '').slice(0, 60);
+    state.sens = Math.min(5, Math.max(1, Math.round(state.sens) || 3));
+    if (!(state.points > 0)) state.points = 1;
+    const k = [];
+    for (let q = 0; q < c.nQ; q++) { const v = state.key[q]; k.push(Number.isInteger(v) && v >= 0 && v < c.nC ? v : -1); }
+    state.key = k;
+  }
+  const labels = () => LABELS[state.cfg.lab].slice(0, state.cfg.nC);
+
+  let toastT = 0;
+  function toast(msg) {
+    const el = $('#toastMsg'); el.textContent = msg; el.hidden = false;
+    clearTimeout(toastT); toastT = setTimeout(() => { el.hidden = true; }, 4200);
+  }
+
+  /* ---------- tabs ---------- */
+  function showTab(n) {
+    [1, 2, 3].forEach(i => {
+      $('#p' + i).hidden = i !== n;
+      $('#t' + i).setAttribute('aria-selected', String(i === n));
+    });
+    if (n === 3) { renderResults(); renderDetail(); updateKeyWarn(); }
+  }
+  [1, 2, 3].forEach(i => $('#t' + i).addEventListener('click', () => showTab(i)));
+
+  /* ---------- fonts and sheet preview ---------- */
+  let fontP = null;
+  function loadFonts() {
+    if (!fontP) {
+      const F = '"IBM Plex Sans Thai"';
+      fontP = Promise.race([
+        Promise.all([
+          document.fonts.load('700 52px ' + F, 'กขค ABC'), document.fonts.load('500 22px ' + F, 'กขค ABC 123'),
+          document.fonts.load('600 21px ' + F, 'กขค ABC 123')
+        ]),
+        new Promise(r => setTimeout(r, 2500))
+      ]).catch(() => { });
+    }
+    return fontP;
+  }
+  let sheetT = 0;
+  function queueSheet() { clearTimeout(sheetT); sheetT = setTimeout(renderSheet, 140); }
+  async function renderSheet() {
+    const c = state.cfg, L = makeLayout(c.nQ, c.nC, c.withId);
+    await loadFonts();
+    const cv = document.createElement('canvas'); cv.width = L.W; cv.height = L.H;
+    drawSheet(cv.getContext('2d'), L, { title: c.title, labels: labels() });
+    $('#sheetImg').src = cv.toDataURL('image/png');
+  }
+
+  /* ---------- bubble grid (shared by key editor and result editor) ---------- */
+  function grid(el, o) {
+    const ae = document.activeElement;
+    const keep = ae && el.contains(ae) && ae.dataset ? ae.dataset.q + ':' + ae.dataset.c : null;
+    let h = '';
+    for (let q = 0; q < o.n; q++) {
+      const s = o.cell(q);
+      h += '<div class="q ' + (s.cls || '') + '"><span class="qn">' + (q + 1) + '</span><span class="opts">';
+      for (let c = 0; c < o.nC; c++) {
+        const on = s.on.indexOf(c) >= 0;
+        const cl = 'opt' + (on ? ' on ' + (s.tone || '') : '') + (s.key === c && !(on && s.tone === 'good') ? ' key' : '');
+        h += '<button type="button" class="' + cl + '" data-q="' + q + '" data-c="' + c + '" aria-pressed="' + on + '" aria-label="ข้อ ' + (q + 1) + ' ตัวเลือก ' + esc(o.labels[c]) + '">' + esc(o.labels[c]) + '</button>';
+      }
+      h += '</span></div>';
+    }
+    el.innerHTML = h;
+    if (keep) { const b = el.querySelector('[data-q="' + keep.split(':')[0] + '"][data-c="' + keep.split(':')[1] + '"]'); if (b) b.focus(); }
+  }
+
+  /* ---------- step 2: answer key ---------- */
+  function renderKey() {
+    const c = state.cfg;
+    grid($('#keyGrid'), { n: c.nQ, nC: c.nC, labels: labels(), cell: q => ({ on: state.key[q] >= 0 ? [state.key[q]] : [] }) });
+    const done = state.key.filter(v => v >= 0).length;
+    $('#keyCount').innerHTML = 'ใส่เฉลยแล้ว <b>' + done + '</b> จาก <b>' + c.nQ + '</b> ข้อ';
+    $('#pts').value = state.points;
+  }
+  $('#keyGrid').addEventListener('click', e => {
+    const b = e.target.closest('.opt'); if (!b) return;
+    const q = +b.dataset.q, c = +b.dataset.c;
+    state.key[q] = state.key[q] === c ? -1 : c;
+    save(); renderKey(); renderResults(); renderDetail(); updateKeyWarn();
+  });
+  function parseKey(s) {
+    const map = { 'ก': 0, 'ข': 1, 'ค': 2, 'ง': 3, 'จ': 4 }, out = [];
+    for (const ch of s) {
+      let v;
+      if (ch in map) v = map[ch];
+      else if (/[a-eA-E]/.test(ch)) v = ch.toLowerCase().charCodeAt(0) - 97;
+      else if (/[1-5]/.test(ch)) v = +ch - 1;
+      else continue;
+      out.push(v);
+    }
+    return out;
+  }
+  $('#quickGo').addEventListener('click', () => {
+    const arr = parseKey($('#quick').value), c = state.cfg;
+    if (!arr.length) { toast('ไม่พบตัวอักษรเฉลย ลองพิมพ์ เช่น กขคง หรือ ABCD'); return; }
+    let n = 0;
+    for (let i = 0; i < Math.min(arr.length, c.nQ); i++) { state.key[i] = arr[i] < c.nC ? arr[i] : -1; if (arr[i] < c.nC) n++; }
+    save(); renderKey(); renderResults(); updateKeyWarn();
+    toast('ใส่เฉลยแล้ว ' + n + ' ข้อ' + (arr.length > c.nQ ? ' (ตัวอักษรที่เกินจำนวนข้อถูกข้าม)' : ''));
+  });
+  $('#quick').addEventListener('keydown', e => { if (e.key === 'Enter') $('#quickGo').click(); });
+  $('#pts').addEventListener('input', e => { const v = parseFloat(e.target.value); if (v > 0) { state.points = v; save(); renderResults(); renderDetail(); } });
+  $('#keyClear').addEventListener('click', () => { state.key = state.key.map(() => -1); save(); renderKey(); renderResults(); renderDetail(); updateKeyWarn(); toast('ล้างเฉลยแล้ว'); });
+  $('#keyScan').addEventListener('click', () => $('#keyFile').click());
+  $('#keyFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    $('#keyScan').disabled = true; toast('กำลังอ่านกระดาษเฉลย...');
+    try {
+      const r = await analyze(f); if (r.error) { toast(r.error); return; }
+      evalRes(r);
+      const c = state.cfg, unclear = [];
+      for (let q = 0; q < c.nQ; q++) { if (r.ans[q] >= 0) state.key[q] = r.ans[q]; else { state.key[q] = -1; unclear.push(q + 1); } }
+      save(); renderKey(); renderResults(); updateKeyWarn();
+      toast(unclear.length ? 'อ่านเฉลยได้ ' + (c.nQ - unclear.length) + ' ข้อ ข้อที่ว่างหรือฝนซ้ำ: ' + unclear.slice(0, 12).join(', ') + (unclear.length > 12 ? ' ...' : '') : 'อ่านเฉลยครบ ' + c.nQ + ' ข้อ');
+    } catch (err) { toast('อ่านรูปไม่ได้: ' + err.message); } finally { $('#keyScan').disabled = false; }
+  });
+
+  /* ---------- image reading ---------- */
+  async function loadGray(file) {
+    let bmp;
+    try { bmp = await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+    catch (e) { try { bmp = await createImageBitmap(file); } catch (e2) { throw new Error('เปิดไฟล์รูปนี้ไม่ได้'); } }
+    const M = 1600, s = Math.min(1, M / Math.max(bmp.width, bmp.height));
+    const w = Math.round(bmp.width * s), h = Math.round(bmp.height * s);
+    const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+    const cx = cv.getContext('2d', { willReadFrequently: true }); cx.drawImage(bmp, 0, 0, w, h);
+    const d = cx.getImageData(0, 0, w, h).data, g = new Uint8ClampedArray(w * h);
+    for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (d[j] * 299 + d[j + 1] * 587 + d[j + 2] * 114) / 1000;
+    const ts = Math.min(1, 1000 / Math.max(w, h)), tw = Math.round(w * ts), th = Math.round(h * ts);
+    const tc = document.createElement('canvas'); tc.width = tw; tc.height = th; tc.getContext('2d').drawImage(cv, 0, 0, tw, th);
+    if (bmp.close) bmp.close();
+    return { gray: g, w, h, thumb: tc.toDataURL('image/jpeg', 0.74), k: tw / w };
+  }
+  const tick = () => new Promise(r => setTimeout(r, 0));
+  async function analyze(file) {
+    const img = await loadGray(file); await tick();
+    return analyzeImg(img, file.name);
+  }
+  function analyzeImg(img, name, hint) {
+    const c = state.cfg, L = makeLayout(c.nQ, c.nC, c.withId);
+    const base = { name: name, thumb: img.thumb, cfg: { nQ: c.nQ, nC: c.nC, lab: c.lab, withId: c.withId } };
+    let rd = null;
+    if (hint) { const t = readSheet(img.gray, img.w, img.h, L, hint); if (t.align >= 0.05) rd = t; }   // corners already known from the live preview: skip detection
+    if (!rd) {
+      const mk = findSheet(img.gray, img.w, img.h, L);
+      if (!mk.ok) return Object.assign(base, { error: mk.err + ' ถ่ายใหม่ให้เห็นสี่เหลี่ยมดำครบทั้ง 4 มุม' });
+      rd = mk.rd;
+    }
+    return Object.assign(base, { H: rd.H, k: img.k, L, dark: rd.dark, idDark: rd.idDark, override: {}, idText: null });
+  }
+  function mkResult(name, thumb, k, rd) {
+    const c = state.cfg, L = makeLayout(c.nQ, c.nC, c.withId);
+    return { name: name, thumb: thumb, cfg: { nQ: c.nQ, nC: c.nC, lab: c.lab, withId: c.withId }, H: rd.H, k: k, L, dark: rd.dark, idDark: rd.idDark, override: {}, idText: null };
+  }
+  function evalRes(r) {
+    if (r.error) return;
+    const T = sensToT(state.sens);
+    r.ans = []; r.marks = [];
+    r.dark.forEach((d, q) => { const x = decideRow(d, T); r.ans[q] = x.v; r.marks[q] = x.marks; });
+    r.idAuto = r.idDark.map(d => { const x = decideRow(d, T); return x.v >= 0 ? String(x.v) : (x.v === -1 ? '_' : '?'); }).join('');
+  }
+  const fv = (r, q) => (r.override[q] !== undefined ? r.override[q] : r.ans[q]);
+  const idOf = r => (r.idText != null ? r.idText : r.idAuto);
+  function score(r) {
+    let s = 0, max = 0, blank = 0, multi = 0; const pts = state.points;
+    for (let q = 0; q < r.cfg.nQ; q++) {
+      const v = fv(r, q), k = state.key[q];
+      if (v === -1) blank++; if (v === -2) multi++;
+      if (k >= 0) { max += pts; if (v === k) s += pts; }
+    }
+    return { s, max, blank, multi };
+  }
+  const fmt = n => (Math.round(n * 100) / 100).toString();
+
+  async function handleFiles(files) {
+    if (state.busy) return;
+    const list = Array.from(files).filter(f => /^image\//.test(f.type) || /\.(jpe?g|png|webp|heic)$/i.test(f.name));
+    if (!list.length) { toast('เลือกไฟล์รูปภาพ (jpg, png)'); return; }
+    state.busy = true; $('#pick').disabled = true; $('#sample').disabled = true; $('#shoot').disabled = true;
+    let fail = 0;
+    for (let i = 0; i < list.length; i++) {
+      $('#prog').textContent = 'กำลังอ่านรูปที่ ' + (i + 1) + ' จาก ' + list.length + '...';
+      await tick();
+      try {
+        const r = await analyze(list[i]); evalRes(r); state.results.push(r);
+        if (r.error) fail++;
+      } catch (err) { fail++; state.results.push({ name: list[i].name, error: err.message, cfg: { nQ: 0 }, thumb: '' }); }
+      renderResults();
+    }
+    $('#prog').textContent = 'อ่านเสร็จ ' + list.length + ' รูป' + (fail ? ' (อ่านไม่ได้ ' + fail + ' รูป)' : '');
+    state.busy = false; $('#pick').disabled = false; $('#sample').disabled = false; $('#shoot').disabled = false;
+    const last = state.results.length - 1;
+    if (list.length === 1 && last >= 0) {
+      const lr = state.results[last];
+      if (lr.error) toast(lr.error);
+      else { state.sel = last; renderResults(); renderDetail(true); toast('เห็นสี่เหลี่ยมดำครบ 4 มุม อ่านเรียบร้อย'); }
+    }
+  }
+
+  /* ---------- step 3: results ---------- */
+  function updateKeyWarn() {
+    const done = state.key.filter(v => v >= 0).length, el = $('#keyWarn');
+    if (done < state.cfg.nQ) {
+      el.hidden = false;
+      el.innerHTML = (done === 0 ? 'ยังไม่ได้ใส่เฉลย ' : 'ใส่เฉลยแล้ว ' + done + ' จาก ' + state.cfg.nQ + ' ข้อ ข้อที่ไม่มีเฉลยจะไม่นับคะแนน ') + '<button type="button" id="goKey">ไปใส่เฉลย</button>';
+      $('#goKey').addEventListener('click', () => showTab(2));
+    } else el.hidden = true;
+  }
+  function renderResults() {
+    const rs = state.results, box = $('#resList');
+    box.hidden = !rs.length; $('#itemCard').hidden = true;
+    if (!rs.length) return;
+    const ok = rs.filter(r => !r.error), sc = ok.map(score);
+    const tot = sc.map(x => x.s), max = sc.length ? sc[0].max : 0;
+    const avg = tot.length ? tot.reduce((a, b) => a + b, 0) / tot.length : 0;
+    $('#sum').innerHTML =
+      '<div><dt>อ่านได้</dt><dd>' + ok.length + '/' + rs.length + '</dd></div>' +
+      '<div><dt>คะแนนเฉลี่ย</dt><dd>' + (tot.length ? fmt(avg) : '-') + (max ? ' / ' + fmt(max) : '') + '</dd></div>' +
+      '<div><dt>สูงสุด</dt><dd>' + (tot.length ? fmt(Math.max.apply(null, tot)) : '-') + '</dd></div>' +
+      '<div><dt>ต่ำสุด</dt><dd>' + (tot.length ? fmt(Math.min.apply(null, tot)) : '-') + '</dd></div>';
+    let h = '';
+    rs.forEach((r, i) => {
+      if (r.error) {
+        h += '<tr class="err"><td class="num">' + (i + 1) + '</td><td class="fn" title="' + esc(r.name) + '">' + esc(r.name) + '</td><td class="errtxt" colspan="3">' + esc(r.error) + '</td><td class="acts"><button class="btn sm ghost" data-del="' + i + '">ลบ</button></td></tr>';
+        return;
+      }
+      const s = score(r), pills = [];
+      if (s.blank) pills.push('<span class="pill">ว่าง ' + s.blank + '</span>');
+      if (s.multi) pills.push('<span class="pill bad">ฝนซ้ำ ' + s.multi + '</span>');
+      if (r.cfg.nQ && s.blank > r.cfg.nQ * 0.6) pills.push('<span class="pill bad">ว่างมากผิดปกติ ตรวจรูป</span>');
+      if (!pills.length) pills.push('<span class="pill ok">ปกติ</span>');
+      h += '<tr class="' + (i === state.sel ? 'sel' : '') + '"><td class="num">' + (i + 1) + '</td><td class="fn" title="' + esc(r.name) + '">' + esc(r.name) + '</td><td class="mono">' + esc(idOf(r) || '-') +
+        '</td><td class="sc mono">' + fmt(s.s) + (s.max ? ' / ' + fmt(s.max) : '') + '</td><td>' + pills.join('') + '</td><td class="acts"><button class="btn sm" data-view="' + i + '">ดูและแก้ไข</button> <button class="btn sm ghost" data-del="' + i + '">ลบ</button></td></tr>';
+    });
+    $('#rows').innerHTML = h;
+    renderItems(ok);
+  }
+  function renderItems(ok) {
+    const n = state.cfg.nQ, valid = ok.filter(r => r.cfg.nQ === n);
+    if (valid.length < 2) { $('#itemCard').hidden = true; return; }
+    let bars = '', lbl = '';
+    for (let q = 0; q < n; q++) {
+      const k = state.key[q];
+      if (k < 0) { bars += '<span style="height:0" title="ข้อ ' + (q + 1) + ': ไม่มีเฉลย"></span>'; }
+      else {
+        const right = valid.filter(r => fv(r, q) === k).length, pct = Math.round(right * 100 / valid.length);
+        bars += '<span class="' + (pct < 40 ? 'low' : '') + '" style="height:' + Math.max(pct, 2) + '%" title="ข้อ ' + (q + 1) + ': ถูก ' + pct + '%"></span>';
+      }
+      lbl += '<span>' + ((q + 1) % 5 === 0 || q === 0 ? q + 1 : '') + '</span>';
+    }
+    ['#bars', '#barLbl'].forEach(s => $(s).style.setProperty('--n', n));
+    $('#bars').innerHTML = bars; $('#barLbl').innerHTML = lbl; $('#itemCard').hidden = false;
+  }
+  $('#rows').addEventListener('click', e => {
+    const v = e.target.closest('[data-view]'), d = e.target.closest('[data-del]');
+    if (v) { state.sel = +v.dataset.view; renderResults(); renderDetail(true); $('#detail').scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    if (d) {
+      const i = +d.dataset.del; state.results.splice(i, 1);
+      if (state.sel === i) state.sel = -1; else if (state.sel > i) state.sel--;
+      renderResults(); renderDetail(true);
+    }
+  });
+  $('#clearRes').addEventListener('click', () => { state.results = []; state.sel = -1; $('#prog').textContent = ''; renderResults(); renderDetail(true); $('#copyBox').hidden = true; });
+
+  /* ---------- detail view with overlay ---------- */
+  function renderDetail(full) {
+    const r = state.results[state.sel], box = $('#detail');
+    if (!r || r.error) { box.hidden = true; return; }
+    if (full || !$('#dgrid')) {
+      box.hidden = false;
+      box.innerHTML =
+        '<div class="dhead"><h2>' + esc(r.name) + '</h2><div class="dmeta">' +
+        (r.cfg.withId ? '<label for="idEdit">รหัส<input id="idEdit" type="text" maxlength="12" autocomplete="off"></label>' : '') +
+        '<span class="dscore" id="dscore"></span><button class="btn sm" id="dclose" type="button">ปิด</button></div></div>' +
+        '<div class="legend"><span><i style="background:var(--good)"></i>ตอบถูก</span><span><i style="background:var(--bad)"></i>ตอบผิด</span><span><i style="background:var(--warn)"></i>ว่างหรือฝนซ้ำ</span><span><i style="border:2px dashed var(--good)"></i>คำตอบที่ถูก</span></div>' +
+        '<div class="dsplit"><canvas id="ov" aria-label="รูปกระดาษคำตอบพร้อมผลการอ่าน"></canvas><div id="dgrid" class="qgrid"></div></div>' +
+        '<p class="hint">อ่านผิดหรืออ่านไม่ชัด? กดวงกลมในตารางด้านขวาเพื่อแก้คำตอบของข้อนั้น กดซ้ำเพื่อให้เป็นข้อว่าง</p>';
+      const ie = $('#idEdit'); if (ie) { ie.value = idOf(r); ie.addEventListener('input', () => { r.idText = ie.value; renderResults(); }); }
+      $('#dclose').addEventListener('click', () => { state.sel = -1; renderResults(); renderDetail(true); });
+      $('#dgrid').addEventListener('click', e => {
+        const b = e.target.closest('.opt'); if (!b) return;
+        const q = +b.dataset.q, c = +b.dataset.c, cur = fv(r, q);
+        r.override[q] = cur === c ? -1 : c;
+        renderResults(); renderDetail(false);
+      });
+    }
+    const cfg = r.cfg, labs = LABELS[cfg.lab].slice(0, cfg.nC);
+    grid($('#dgrid'), {
+      n: cfg.nQ, nC: cfg.nC, labels: labs, cell: q => {
+        const v = fv(r, q), k = state.key[q];
+        if (v >= 0) { const tone = k < 0 ? '' : (v === k ? 'good' : 'bad'); return { on: [v], tone, key: tone === 'bad' ? k : -1 }; }
+        if (v === -2) return { on: r.marks[q], tone: 'warn', cls: 'multi', key: k >= 0 ? k : -1 };
+        return { on: [], cls: 'blank', key: k >= 0 ? k : -1 };
+      }
+    });
+    const s = score(r);
+    $('#dscore').textContent = fmt(s.s) + (s.max ? ' / ' + fmt(s.max) : '');
+    drawOverlay(r);
+  }
+  function drawOverlay(r) {
+    if (!r.thumb) { setTimeout(() => { if (state.results[state.sel] === r) drawOverlay(r); }, 80); return; }
+    const paint = () => {
+      const cv = $('#ov'); if (!cv || state.results[state.sel] !== r) return;
+      const im = r.img; cv.width = im.naturalWidth; cv.height = im.naturalHeight;
+      const g = cv.getContext('2d'); g.drawImage(im, 0, 0);
+      const L = r.L, k = r.k;
+      const circle = (x, y, rad, col, w, fill, dash) => {
+        const [px, py] = applyH(r.H, x, y), [qx, qy] = applyH(r.H, x + rad, y), rr = Math.hypot(qx - px, qy - py) * k;
+        g.beginPath(); g.arc(px * k, py * k, rr, 0, Math.PI * 2);
+        if (fill) { g.fillStyle = fill; g.fill(); }
+        g.setLineDash(dash || []); g.lineWidth = w; g.strokeStyle = col; g.stroke();
+      };
+      for (let q = 0; q < L.nQ; q++) {
+        const v = fv(r, q), kk = state.key[q];
+        const marked = v >= 0 ? [v] : (v === -2 ? r.marks[q] : []);
+        for (let c = 0; c < L.nC; c++) {
+          const b = L.q[q][c];
+          if (marked.indexOf(c) >= 0) {
+            const col = v === -2 ? '#ffb020' : (kk < 0 ? '#4f8dff' : (v === kk ? '#1fbf75' : '#ff4d3d'));
+            circle(b.x, b.y, L.r * 1.25, col, 3, col + '55');
+          } else if (c === kk) circle(b.x, b.y, L.r * 1.25, '#1fbf75', 2.5, null, [5, 3]);
+          else circle(b.x, b.y, L.r, 'rgba(255,255,255,.35)', 1);
+        }
+      }
+      if (L.withId) {
+        const t = idOf(r);
+        for (let d = 0; d < L.idCols; d++) {
+          const ch = t[d], dv = ch >= '0' && ch <= '9' ? +ch : -1;
+          for (let v = 0; v < 10; v++) {
+            const b = L.id[d][v];
+            if (v === dv) circle(b.x, b.y, L.idR * 1.25, '#4f8dff', 3, '#4f8dff55'); else circle(b.x, b.y, L.idR, 'rgba(255,255,255,.3)', 1);
+          }
+        }
+      }
+    };
+    if (r.img && r.img.complete && r.img.naturalWidth) paint();
+    else { r.img = new Image(); r.img.onload = paint; r.img.src = r.thumb; }
+  }
+
+  /* ---------- copy table ---------- */
+  $('#copy').addEventListener('click', async () => {
+    const ok = state.results.filter(r => !r.error); if (!ok.length) { toast('ยังไม่มีผลที่อ่านได้'); return; }
+    const n = Math.max.apply(null, ok.map(r => r.cfg.nQ));
+    const head = ['ลำดับ', 'ไฟล์', 'รหัส', 'คะแนน', 'เต็ม'];
+    for (let q = 1; q <= n; q++) head.push('ข้อ ' + q);
+    const lines = [head.join('\t')];
+    state.results.forEach((r, i) => {
+      if (r.error) return;
+      const s = score(r), labs = LABELS[r.cfg.lab], row = [i + 1, r.name.replace(/\t/g, ' '), idOf(r), fmt(s.s), fmt(s.max)];
+      for (let q = 0; q < n; q++) { const v = q < r.cfg.nQ ? fv(r, q) : -1; row.push(v >= 0 ? labs[v] : (v === -2 ? '*' : '-')); }
+      lines.push(row.join('\t'));
+    });
+    const text = lines.join('\n');
+    try { await navigator.clipboard.writeText(text); toast('คัดลอกแล้ว วางใน Excel หรือ Google Sheets ได้เลย (ฝนซ้ำแสดงเป็น *, ว่างเป็น -)'); $('#copyBox').hidden = true; }
+    catch (e) {
+      const box = $('#copyBox'); box.hidden = false;
+      box.innerHTML = '<p class="hint">คัดลอกอัตโนมัติไม่ได้ในหน้านี้ เลือกข้อความด้านล่างแล้วกด Ctrl+C</p><textarea class="copyarea" id="copyArea" readonly></textarea>';
+      const ta = $('#copyArea'); ta.value = text; ta.focus(); ta.select();
+    }
+  });
+
+  /* ---------- sample sheet (simulated photo) ---------- */
+  async function makeSample() {
+    const c = state.cfg, L = makeLayout(c.nQ, c.nC, c.withId);
+    await loadFonts();
+    const sc = document.createElement('canvas'); sc.width = L.W; sc.height = L.H;
+    const g = sc.getContext('2d');
+    drawSheet(g, L, { title: c.title, labels: labels() });
+    const dot = (b, r, a) => {
+      g.save(); g.fillStyle = 'rgba(38,42,50,' + a + ')'; g.beginPath();
+      g.ellipse(b.x + (Math.random() - .5) * 3, b.y + (Math.random() - .5) * 3, r * .9, r * .86, Math.random() * 3, 0, Math.PI * 2); g.fill(); g.restore();
+    };
+    const have = state.key.some(v => v >= 0);
+    for (let q = 0; q < L.nQ; q++) {
+      let a = have && state.key[q] >= 0 ? state.key[q] : Math.floor(Math.random() * c.nC);
+      if (Math.random() < 0.22) a = Math.floor(Math.random() * c.nC);
+      if (q === 4 && L.nQ > 6) continue;
+      dot(L.q[q][a], L.r, 0.88);
+      if (q === 2 && L.nQ > 6) dot(L.q[q][(a + 1) % c.nC], L.r, 0.88);
+    }
+    if (L.withId) for (let d = 0; d < L.idCols; d++) dot(L.id[d][Math.floor(Math.random() * 10)], L.idR, 0.9);
+    const W = 1300, H = 1700, out = document.createElement('canvas'); out.width = W; out.height = H;
+    const o = out.getContext('2d');
+    const bg = o.createLinearGradient(0, 0, W, H); bg.addColorStop(0, '#5c6169'); bg.addColorStop(1, '#7a7e86'); o.fillStyle = bg; o.fillRect(0, 0, W, H);
+    o.save(); o.translate(W / 2 + (Math.random() - .5) * 40, H / 2); o.rotate((Math.random() - .5) * 0.14); o.scale(0.86, 0.86);
+    o.shadowColor = 'rgba(0,0,0,.45)'; o.shadowBlur = 30; o.shadowOffsetY = 8; o.drawImage(sc, -L.W / 2, -L.H / 2); o.restore();
+    const lg = o.createLinearGradient(0, 0, W, H); lg.addColorStop(0, 'rgba(0,0,0,0)'); lg.addColorStop(1, 'rgba(0,0,0,.38)'); o.fillStyle = lg; o.fillRect(0, 0, W, H);
+    const blob = await new Promise(r => out.toBlob(r, 'image/jpeg', 0.86));
+    return new File([blob], 'ตัวอย่าง-' + (state.results.length + 1) + '.jpg', { type: 'image/jpeg' });
+  }
+  $('#sample').addEventListener('click', async () => {
+    try { toast('กำลังสร้างรูปตัวอย่างที่เอียงและมีเงา'); const f = await makeSample(); await handleFiles([f]); }
+    catch (e) { toast('สร้างรูปตัวอย่างไม่ได้: ' + e.message); }
+  });
+
+  /* ---------- live scanning ---------- */
+  const LV = { stream: null, timer: 0, mode: 'scan', stable: 0, prev: null, lost: 0, until: 0, busy: false, idx: -1, ac: null, small: null, wake: null };
+  function beep(ok) {
+    try {
+      const A = window.AudioContext || window.webkitAudioContext;
+      if (A) {
+        LV.ac = LV.ac || new A();
+        const o = LV.ac.createOscillator(), g = LV.ac.createGain();
+        o.frequency.value = ok ? 880 : 320; g.gain.value = 0.08; o.connect(g); g.connect(LV.ac.destination);
+        o.start(); o.stop(LV.ac.currentTime + 0.14);
+      }
+    } catch (e) { }
+    try { if (navigator.vibrate) navigator.vibrate(ok ? 60 : [80, 60, 80]); } catch (e) { }
+  }
+  function lstat(t, cls) { const el = $('#lstat'); el.textContent = t; el.className = 'lstat' + (cls ? ' ' + cls : ''); }
+  function grayOf(cv) {
+    const w = cv.width, h = cv.height, d = cv.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, w, h).data, g = new Uint8ClampedArray(w * h);
+    for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (d[j] * 299 + d[j + 1] * 587 + d[j + 2] * 114) / 1000;
+    return g;
+  }
+  function liveSummary() {
+    const ok = state.results.filter(r => !r.error);
+    if (!ok.length) { $('#lsum').textContent = 'ยังไม่มีใบที่ตรวจ'; return; }
+    const sc = ok.map(score), avg = sc.reduce((a, b) => a + b.s, 0) / sc.length;
+    $('#lsum').textContent = 'ตรวจแล้ว ' + ok.length + ' ใบ  ·  คะแนนเฉลี่ย ' + fmt(avg) + (sc[0].max ? ' / ' + fmt(sc[0].max) : '');
+  }
+  function liveDraw(pts, w, h, col) {
+    const st = $('#lstage'), cv = $('#lcv'), sw = st.clientWidth, sh = st.clientHeight;
+    if (cv.width !== sw || cv.height !== sh) { cv.width = sw; cv.height = sh; }
+    const c = cv.getContext('2d'); c.clearRect(0, 0, sw, sh);
+    const sc = Math.min(sw / w, sh / h), ox = (sw - w * sc) / 2, oy = (sh - h * sc) / 2;
+    if (pts) {
+      const P = p => [ox + p[0] * sc, oy + p[1] * sc];
+      c.beginPath(); pts.forEach((p, i) => { const q = P(p); if (i) c.lineTo(q[0], q[1]); else c.moveTo(q[0], q[1]); }); c.closePath();
+      c.lineWidth = 4; c.strokeStyle = col; c.fillStyle = col + '30'; c.fill(); c.stroke();
+      pts.forEach(p => { const q = P(p); c.beginPath(); c.arc(q[0], q[1], 9, 0, 7); c.fillStyle = col; c.fill(); });
+    } else {
+      const gh = h * sc * 0.82, gw = Math.min(w * sc * 0.9, gh / 1.414), cx0 = sw / 2, cy0 = sh / 2, L = Math.min(30, gw * 0.18);
+      c.strokeStyle = 'rgba(255,255,255,.7)'; c.lineWidth = 4; c.lineCap = 'round';
+      [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(s => {
+        const x = cx0 + s[0] * gw / 2, y = cy0 + s[1] * gh / 2;
+        c.beginPath(); c.moveTo(x - s[0] * L, y); c.lineTo(x, y); c.lineTo(x, y - s[1] * L); c.stroke();
+      });
+    }
+  }
+  async function liveStart() {
+    if (LV.stream) return;
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { toast('เบราว์เซอร์นี้เปิดกล้องสดไม่ได้ ใช้ปุ่มถ่ายด้วยกล้องแทน'); return; }
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 1280 } }, audio: false });
+    } catch (e) {
+      toast(e && e.name === 'NotFoundError' ? 'ไม่พบกล้องในเครื่องนี้' : 'เปิดกล้องสดไม่ได้ ถ้าอยู่ในหน้าที่ฝังใน claude.ai ให้ใช้ปุ่มถ่ายด้วยกล้องแทน หรือเปิดไฟล์ HTML บนเว็บ https ของตัวเองแล้วกดอนุญาตกล้อง');
+      return;
+    }
+    LV.stream = stream; LV.mode = 'scan'; LV.stable = 0; LV.prev = null; LV.lost = 0; LV.until = 0; LV.busy = false;
+    $('#liveBox').hidden = false; $('#lres').hidden = true; document.body.style.overflow = 'hidden';
+    const v = $('#lvid'); v.srcObject = stream;
+    try { await Promise.race([v.play(), new Promise(r => setTimeout(r, 2500))]); } catch (e) { }
+    lstat('จ่อกล้องที่กระดาษคำตอบ ให้เห็นสี่เหลี่ยมดำครบ 4 มุม');
+    clearTimeout(LV.dead); LV.dead = setTimeout(() => {       // camera opened but sends no picture
+      if (LV.stream === stream && !v.videoWidth) lstat('กล้องเปิดแล้วแต่ไม่มีภาพ ตรวจว่าเปิดม่านปิดกล้องหรือยัง และไม่มีแอปอื่นใช้กล้องอยู่ หรือเลือกกล้องอื่นในเบราว์เซอร์', 'warn');
+    }, 4000);
+    try {                                                   // keep autofocus running so the paper stays sharp while moving
+      const tr = stream.getVideoTracks()[0], caps = tr.getCapabilities ? tr.getCapabilities() : null;
+      if (caps && caps.focusMode && caps.focusMode.indexOf('continuous') >= 0) tr.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => { });
+    } catch (e) { }
+    wkStart();
+    try { if (navigator.wakeLock) LV.wake = await navigator.wakeLock.request('screen'); } catch (e) { }
+    lstat('จ่อกล้องที่กระดาษคำตอบ ให้เห็นสี่เหลี่ยมดำครบ 4 มุม');
+    liveSummary(); $('#lclose').focus();
+    liveLoop();
+  }
+  function liveStop() {
+    clearTimeout(LV.timer); clearTimeout(LV.dead);
+    if (LV.stream) LV.stream.getTracks().forEach(t => t.stop());
+    LV.stream = null; wkStop();
+    try { if (LV.wake) LV.wake.release(); } catch (e) { } LV.wake = null;
+    $('#lvid').srcObject = null; $('#liveBox').hidden = true; document.body.style.overflow = '';
+    renderResults();
+  }
+  function liveLoop() {
+    if (!LV.stream || LV.looping) return;
+    LV.looping = true;
+    liveFrame().catch(() => { }).then(() => {
+      LV.looping = false;
+      if (!LV.stream) return;
+      const v = $('#lvid'), rv = !!v.requestVideoFrameCallback; let done = false;
+      const go = () => { if (done) return; done = true; clearTimeout(LV.timer); liveLoop(); };
+      if (rv) v.requestVideoFrameCallback(go);          // wake on the next camera frame, no fixed delay
+      LV.timer = setTimeout(go, rv ? 400 : 16);          // watchdog
+    });
+  }
+  // ---- background worker: all image analysis runs off the main thread so the camera preview never stutters ----
+  function workerMain() {
+    self.onmessage = function (e) {
+      const m = e.data;
+      try {
+        const w = m.w, h = m.h, oc = new OffscreenCanvas(w, h), cx = oc.getContext('2d', { willReadFrequently: true });
+        cx.drawImage(m.bmp, 0, 0, w, h); if (m.bmp.close) m.bmp.close();
+        const d = cx.getImageData(0, 0, w, h).data, g = new Uint8ClampedArray(w * h);
+        for (let i = 0, j = 0; i < g.length; i++, j += 4) g[i] = (d[j] * 299 + d[j + 1] * 587 + d[j + 2] * 114) / 1000;
+        const L = makeLayout(m.nQ, m.nC, m.withId);
+        if (m.type === 'preview') {
+          const r = findSheet(g, w, h, L);
+          self.postMessage({ id: m.id, ok: r.ok, pts: r.pts, err: r.err, found: r.found });
+        } else {
+          let rd = null;
+          if (m.hint) { const t = readSheet(g, w, h, L, m.hint); if (t.align >= 0.05) rd = t; }
+          if (!rd) {
+            const mk = findSheet(g, w, h, L);
+            if (!mk.ok) { self.postMessage({ id: m.id, ok: false, err: mk.err }); return; }
+            rd = mk.rd;
+          }
+          self.postMessage({ id: m.id, ok: true, H: rd.H, dark: rd.dark, idDark: rd.idDark });
+        }
+      } catch (err) { self.postMessage({ id: m.id, fail: String(err) }); }
+    };
+  }
+  function wkStart() {
+    LV.wkBad = false; LV.wkPend = {}; LV.wkId = 0;
+    if (LV.wk || !__CORE_SRC || typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined' || typeof createImageBitmap !== 'function') return;
+    try {
+      const url = URL.createObjectURL(new Blob([__CORE_SRC + '\n;(' + workerMain.toString() + ')();'], { type: 'text/javascript' }));
+      const wk = new Worker(url); LV.wkUrl = url;
+      wk.onmessage = e => { const p = LV.wkPend[e.data.id]; if (p) { delete LV.wkPend[e.data.id]; clearTimeout(p.t); e.data.fail ? p.rej(new Error(e.data.fail)) : p.res(e.data); } };
+      wk.onerror = () => { LV.wkBad = true; wkFlush(new Error('worker')); };
+      LV.wk = wk;
+    } catch (e) { LV.wk = null; }
+  }
+  function wkFlush(err) { const P = LV.wkPend || {}; LV.wkPend = {}; Object.keys(P).forEach(k => { clearTimeout(P[k].t); P[k].rej(err); }); }
+  function wkStop() {
+    if (LV.wk) { try { LV.wk.terminate(); } catch (e) { } }
+    if (LV.wkUrl) { try { URL.revokeObjectURL(LV.wkUrl); } catch (e) { } }
+    wkFlush(new Error('stopped')); LV.wk = null; LV.wkUrl = null;
+  }
+  function wkUsable() { return !!LV.wk && !LV.wkBad; }
+  function wkCall(msg, transfer) {
+    return new Promise((res, rej) => {
+      const id = ++LV.wkId; msg.id = id;
+      const c = state.cfg; msg.nQ = c.nQ; msg.nC = c.nC; msg.withId = c.withId;
+      LV.wkPend[id] = { res, rej, t: setTimeout(() => { delete LV.wkPend[id]; LV.wkBad = true; rej(new Error('timeout')); }, 5000) };
+      try { LV.wk.postMessage(msg, transfer); } catch (e) { const p = LV.wkPend[id]; if (p) clearTimeout(p.t); delete LV.wkPend[id]; LV.wkBad = true; rej(e); }
+    });
+  }
+  const PREV_MAX = 512;
+  LV.stat = { n: 0, frameMs: 0, capMs: 0, l2s: [] }; LV.lockT = 0; LV.didCap = false;
+  window.__examScannerStats = () => JSON.parse(JSON.stringify(LV.stat));
+  async function liveFrame() {
+    const t0 = performance.now(); LV.didCap = false;
+    await liveFrameInner();
+    if (!LV.didCap) { LV.stat.n++; LV.stat.frameMs = LV.stat.n === 1 ? performance.now() - t0 : LV.stat.frameMs * 0.8 + (performance.now() - t0) * 0.2; }
+  }
+  async function liveFrameInner() {
+    const v = $('#lvid');
+    if (!v.videoWidth || LV.busy) return;
+    const vw = v.videoWidth, vh = v.videoHeight, s = Math.min(1, PREV_MAX / Math.max(vw, vh));
+    const w = Math.round(vw * s), h = Math.round(vh * s);
+    if (Date.now() < LV.until) { liveDraw(null, w, h); return; }
+    let r = null;
+    if (wkUsable()) {
+      try {
+        const bmp = await createImageBitmap(v, { resizeWidth: w, resizeHeight: h, resizeQuality: 'low' });
+        r = await wkCall({ type: 'preview', bmp, w, h }, [bmp]);
+      } catch (e) { LV.wkBad = true; r = null; }
+      if (!LV.stream) return;
+    }
+    if (!r) {                                                // fallback: analyse on the main thread
+      const cv = LV.small || (LV.small = document.createElement('canvas'));
+      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+      cv.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0, w, h);
+      const c = state.cfg; r = findSheet(grayOf(cv), w, h, makeLayout(c.nQ, c.nC, c.withId));
+    }
+    if (r.ok) {
+      LV.lost = 0;
+      if (LV.mode === 'scan' && !LV.lockT) LV.lockT = performance.now();
+      if (LV.mode === 'shown') { liveDraw(r.pts, w, h, '#4f8dff'); lstat('ตรวจแล้ว เลื่อนกระดาษใบถัดไปเข้ามาได้เลย', 'ok'); return; }
+      const moved = LV.prev ? Math.max.apply(null, r.pts.map((p, i) => Math.hypot(p[0] - LV.prev[i][0], p[1] - LV.prev[i][1]))) : 1e9;
+      LV.prev = r.pts; LV.stable = moved < Math.max(w, h) * 0.02 ? LV.stable + 1 : 0;
+      liveDraw(r.pts, w, h, LV.stable >= 2 ? '#1fbf75' : '#ffb020');
+      if (LV.stable < 2) { lstat('เห็นกระดาษแล้ว ถือให้นิ่ง...', 'warn'); return; }
+      await liveCapture(r.pts, w, h);
+    } else {
+      LV.stable = 0; LV.prev = null; LV.lost++; if (LV.mode === 'scan') LV.lockT = 0;
+      if (LV.mode === 'shown' && LV.lost >= 3) { LV.mode = 'scan'; $('#lres').hidden = true; }
+      liveDraw(null, w, h);
+      if (LV.mode === 'shown') lstat('ตรวจแล้ว เลื่อนกระดาษใบถัดไปเข้ามาได้เลย', 'ok');
+      else lstat(r.found > 0 ? r.err : 'จ่อกล้องที่กระดาษคำตอบ ให้เห็นสี่เหลี่ยมดำครบ 4 มุม', r.found > 0 ? 'warn' : '');
+    }
+  }
+  async function liveCapture(pts, pw, ph) {
+    LV.busy = true; LV.didCap = true; lstat('กำลังอ่าน...'); const tc0 = performance.now();
+    try {
+      const v = $('#lvid'), s = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+      const w = Math.round(v.videoWidth * s), h = Math.round(v.videoHeight * s);
+      const hint = pts.map(p => [p[0] * w / pw, p[1] * h / ph]);
+      const ts = Math.min(1, 1000 / Math.max(w, h)), tw = Math.round(w * ts), th = Math.round(h * ts);
+      const nm = 'สแกนสด-' + (state.results.length + 1);
+      let cv = null, tbmp = null, r = null;
+      if (wkUsable()) {
+        try {
+          const bmp = await createImageBitmap(v, { resizeWidth: w, resizeHeight: h, resizeQuality: 'medium' });
+          tbmp = await createImageBitmap(bmp, { resizeWidth: tw, resizeHeight: th, resizeQuality: 'medium' });
+          const wr = await wkCall({ type: 'read', bmp, w, h, hint }, [bmp]);
+          r = wr.ok ? mkResult(nm, '', tw / w, wr) : { name: nm, thumb: '', error: wr.err + ' ถ่ายใหม่ให้เห็นสี่เหลี่ยมดำครบทั้ง 4 มุม' };
+        } catch (e) { LV.wkBad = true; r = null; }
+      }
+      if (!r) {                                              // fallback: main thread
+        cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+        cv.getContext('2d', { willReadFrequently: true }).drawImage(v, 0, 0, w, h);
+        r = analyzeImg({ gray: grayOf(cv), w, h, thumb: '', k: tw / w }, nm, hint);
+      }
+      if (r.error) { beep(false); lstat(r.error, 'warn'); LV.until = Date.now() + 800; LV.stable = 0; LV.prev = null; return; }
+      evalRes(r); state.results.push(r); LV.idx = state.results.length - 1;
+      LV.mode = 'shown'; LV.lost = 0; LV.stable = 0; LV.prev = null;
+      beep(true); liveShow(r, LV.idx); liveSummary();
+      setTimeout(() => {                                    // build the review thumbnail after the score is already on screen
+        const tcv = document.createElement('canvas'); tcv.width = tw; tcv.height = th; tcv.getContext('2d').drawImage(cv || tbmp, 0, 0, tw, th);
+        if (tbmp && tbmp.close) tbmp.close();
+        r.thumb = tcv.toDataURL('image/jpeg', 0.74);
+      }, 0);
+      LV.stat.capMs = performance.now() - tc0; LV.stat.l2s.push(Math.round(performance.now() - (LV.lockT || tc0))); LV.lockT = 0;
+      lstat('ตรวจแล้ว เลื่อนกระดาษใบถัดไปเข้ามาได้เลย', 'ok');
+    } finally { LV.busy = false; }
+  }
+  function liveShow(r, idx) {
+    const s = score(r), el = $('#lres'), fl = [];
+    if (s.blank) fl.push('<span class="w">ว่าง ' + s.blank + ' ข้อ</span>');
+    if (s.multi) fl.push('<span class="w">ฝนซ้ำ ' + s.multi + ' ข้อ</span>');
+    if (r.cfg.nQ && s.blank > r.cfg.nQ * 0.6) fl.push('<span class="w">ว่างมากผิดปกติ ตรวจรูปอีกครั้ง</span>');
+    el.hidden = false;
+    el.innerHTML = '<div class="lscore">' + (s.max ? fmt(s.s) + '<small> / ' + fmt(s.max) + '</small>' : '<small>ยังไม่มีเฉลย</small>') + '</div>' +
+      '<div class="lmeta"><span>ใบที่ ' + (idx + 1) + '</span>' + (r.cfg.withId ? '<span>รหัส ' + esc(idOf(r)) + '</span>' : '') + fl.join('') + '</div>' +
+      '<div class="lacts"><button class="lbtn pri" id="lnext" type="button">ใบต่อไป</button><button class="lbtn ghost" id="ledit" type="button">ดูและแก้ไข</button></div>';
+  }
+  $('#lres').addEventListener('click', e => {
+    if (e.target.closest('#lnext')) { LV.mode = 'scan'; LV.until = Date.now() + 500; LV.stable = 0; LV.prev = null; $('#lres').hidden = true; lstat('จ่อกล้องที่กระดาษใบถัดไป'); }
+    if (e.target.closest('#ledit')) { const i = LV.idx; liveStop(); state.sel = i; renderResults(); renderDetail(true); $('#detail').scrollIntoView({ block: 'start' }); }
+  });
+  $('#lclose').addEventListener('click', liveStop);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && LV.stream) liveStop(); });
+  $('#liveBtn').hidden = !(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+  $('#liveBtn').addEventListener('click', liveStart);
+
+  /* ---------- wiring ---------- */
+  $('#pick').addEventListener('click', () => $('#files').click());
+  $('#shoot').addEventListener('click', () => $('#cam').click());
+  $('#cam').addEventListener('change', e => { const f = e.target.files; if (f && f.length) handleFiles(f); e.target.value = ''; });
+  $('#files').addEventListener('change', e => { const f = e.target.files; if (f && f.length) handleFiles(f); e.target.value = ''; });
+  const drop = $('#drop');
+  ['dragenter', 'dragover'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.add('over'); }));
+  ['dragleave', 'drop'].forEach(t => drop.addEventListener(t, e => { e.preventDefault(); drop.classList.remove('over'); }));
+  drop.addEventListener('drop', e => { if (e.dataTransfer && e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  $('#sens').addEventListener('input', e => {
+    state.sens = +e.target.value; $('#sensTxt').textContent = SENS_TXT[state.sens - 1]; save();
+    state.results.forEach(evalRes); renderResults(); renderDetail(false);
+    const r = state.results[state.sel]; const ie = $('#idEdit'); if (r && ie && r.idText == null) ie.value = idOf(r);
+  });
+
+  function syncControls() {
+    const c = state.cfg;
+    if (document.activeElement !== $('#title')) $('#title').value = c.title;
+    if (document.activeElement !== $('#nQ')) $('#nQ').value = c.nQ;
+    $('#withId').checked = c.withId;
+    $('#segC').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.v === c.nC)));
+    $('#segL').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.v === c.lab)));
+    const ex = LABELS[c.lab], five = c.nC === 5;
+    $('#segL').querySelectorAll('button').forEach(b => { const L5 = LABELS[b.dataset.v]; b.textContent = L5.slice(0, five ? 5 : 4).join(' '); });
+    $('#sens').value = state.sens; $('#sensTxt').textContent = SENS_TXT[state.sens - 1];
+  }
+  function cfgChanged() { sanitize(); save(); syncControls(); queueSheet(); renderKey(); updateKeyWarn(); renderResults(); }
+  $('#title').addEventListener('input', e => { state.cfg.title = e.target.value; save(); queueSheet(); });
+  $('#nQ').addEventListener('input', e => { const v = parseInt(e.target.value, 10); if (v >= 1 && v <= 100) { state.cfg.nQ = v; cfgChanged(); } });
+  $('#nQ').addEventListener('change', e => { state.cfg.nQ = parseInt(e.target.value, 10) || state.cfg.nQ; cfgChanged(); });
+  $('#withId').addEventListener('change', e => { state.cfg.withId = e.target.checked; cfgChanged(); });
+  $('#segC').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.cfg.nC = +b.dataset.v; cfgChanged(); } });
+  $('#segL').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { state.cfg.lab = b.dataset.v; cfgChanged(); } });
+
+  load(); syncControls(); renderKey(); updateKeyWarn(); renderSheet();
+})();
+</script>
+
+<script>
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+  window.addEventListener("load", function () { navigator.serviceWorker.register("sw.js").catch(function () {}); });
+}
+</script>
+</body></html>
